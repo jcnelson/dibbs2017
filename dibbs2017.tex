@@ -45,8 +45,6 @@
 \title{\Large \bf Give Your Data the Edge: A Scalable Data Delivery Platform}
 
 \author{\rm Larry Peterson (PI)\\
-\emph{}\\
-\emph{Princeton University}\\
 llp@cs.princeton.edu\\
 \emph{NSF 1541318}
 }
@@ -78,44 +76,56 @@ commodity cloud storage, and content distribution networks (CDNs) to create cohe
 read/write storage volumes that span multiple sites and attach to scientists' VMs and laptops like
 removable drives.  Using only her workstation, a PI can select datasets and
 storage infrastructure, create volumes, and add collaborator user accounts, and the system
-will automatically configure itself across all users' computers.
+will automatically configure itself at runtime.
 
 The most significant challenge in the design and implementation of Syndicate
 is to provide end-to-end data gurarantees like consistency, durability, and
 availability.  End-to-end consistency is particularly
-thorny because data analysis tools adhere to very particular consistency
+tricky because data analysis tools assume very particular consistency
 models, but the underlying infrastructure offers variable and often very weak
 guarantees.  For example, BLAST interacts with data under POSIX
 consistency semantics, but an Amazon S3 bucket augmented with a CDN can at best
 provide delta consistency.
 
-Mismatches like this result in \emph{bespoke}
-workflows that are tightly coupled to their underlying infrastructure.  This
-imposes a high barrier to entry for data-driven science, as well as high
-switching costs when choosing storage infrastructure, since changing a workflow
-requires considering all the underlying consistency models in
-order to preserve correct behavior.
+Mismatches like this result in lots of ``glue code'' to make
+scientific software interoperate with storage infrastructure.  Glue code is
+workflow- and storage-specific, and maintaining it requires deep knowledge of
+both.  This imposes high operational costs, since
+any changes mean throwing out and
+writing more glue code to preserve compatibility.
 
-Syndicate overcomes this challenge with a unique storage programming model that
-lets users not only establish their preferred end-to-end guarantees,
-\emph{but also re-use their solutions across workflows}.  To do so, Syndicate
-provides built-in snapshot isolation on files and directories ``on top'' of the
-data stores.  Writes are atomic, file blocks are \emph{immutable}
-between writes, and each block generated has a \emph{globally-unique addresses} in the system.
+\begin{figure}[ht!]
+   \centering
+   \includegraphics[width=0.5\textwidth]{fig2.pdf}
+   \caption{\it Syndicate deployment.  Drivers run in gateways (SG), which
+   coordinate via a Metadata Service.  Together, they make up the programmable
+   storage fabric that links existing infrastructure together to create shared
+   volumes.}
+   \label{fig:syndicate-overview}
+\end{figure}
 
-This greatly simplifies interfacing with new storage systems while preserving
-consistency.  Data gets loaded, stored, and cleared from storage in terms of
-whole-chunk \texttt{get}s, \texttt{put}s, and \texttt{delete}s \emph{which never conflict}.
-Consistency is preserved by \emph{constraining the order} in which a file's blocks can be
-loaded and stored relative to other blocks.  By separating data storage and
-retrieval from ordering, we enable consistency-preserving logic to be developed
+Syndicate overcomes this challenge with a novel storage programming model that
+replaces bespoke glue code with \emph{composable, reusable storage drivers}
+running in a \emph{programmable storage fabric} that spans the wide-area
+(Figure~\ref{fig:syndicate-overview}).
+Once written, a Syndicate driver can be deployed and combined with other drivers
+and used in other workflows to provide the desired end-to-end consistency.
+
+To achieve this, Syndicate provides built-in snapshot isolation on files ``on top'' of 
+the storage infrastructure.  Data chunks are \emph{immutable}
+between writes, and have \emph{globally-unique addresses} in the system.
+Whole-chunk \texttt{get}s, \texttt{put}s, and \texttt{delete}s never conflict,
+which lets users implement consistency simply by constraining the order in which
+chunks are processed relative to other chunks.  By separating data storage and
+retrieval from operation ordering, we enable consistency-preserving logic to be developed
 independently of both the workflow and storage provider.
 
-We have employed this technique to augment iRODS deployments with an Akamai CDN
-deployment to accelerate data delivery across the wide-area and automatically
-stage it to a Hadoop cluster.  Crucially, the CDN's weak consistency does not
-affect the experiment's correctness.  We have achieved this with only a few
-hundred lines of Python running within Syndicate.
+We have deployed Syndicate on OpenCloud to give each user a shared volume
+for accessing data across compute clusters.  Users attach iRODS deployments
+to an Akamai CDN and commodity storage to accelerate data delivery across the
+wide-area and automatically stage it to compute clusters.  The CDN's weak
+consistency does \emph{not} affect workflow correctness.  We have achieved this
+with only a few hundred lines of Python in the drivers.
 
 \end{document}
 
